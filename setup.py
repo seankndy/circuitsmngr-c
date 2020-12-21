@@ -22,7 +22,10 @@ setup(
     author_email='sean@kndy.net',
     license='BSD 2-clause',
     zip_safe=False,
-    entry_points={"console_scripts": ["circuitsmngr-c=circuitsmngr-c.main:main"]},
+    install_requires=[
+       "requests",
+    ],
+    entry_points={"console_scripts": ["c=circuitsmngr_c.main:main"]},
     packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
     include_package_data=True,
     keywords=[],

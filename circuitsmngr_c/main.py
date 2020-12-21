@@ -30,9 +30,6 @@ def parse_arguments():
     if args.update_cache and not (args.user and args.password):
         raise parser.error("--update-cache requires --user and --password")
 
-    if not args.update_cache and not args.query:
-        raise parser.error("query required")
-
     return vars(args)
 
 def load_config(filename):

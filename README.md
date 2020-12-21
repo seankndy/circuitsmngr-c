@@ -1,8 +1,11 @@
 # circuitsmngr-c
 circuitsmngr device connect utility
 
-# Configuration
-Configuration example is in config/c.json, you can copy this to $HOME/.config/c.json.
+# Installation and Configuration
+```console
+$ pipx install git+https://github.com/seankndy/circuitsmngr-c.git
+```
+Configuration example is in `config/c.json`, you can copy this to ``$HOME/.config/c.json`.
 
 # BASH Completion
 circuitsmngr-c has BASH completion support.  You'll need to add something like the following to your bash env:

@@ -1,0 +1,13 @@
+{
+    "commands.ssh1":    "/usr/bin/ssh -1 -l %username% %hostname%",
+    "commands.ssh2":    "/usr/bin/ssh -l %username% %hostname%",
+    "commands.telnet":  "/usr/local/bin/telnet -K %hostname%",
+    "commands.web":     "/usr/bin/open http://%hostname%",
+
+    "circuitsmngr.url": "https://circuits.vcn.com/c.php",
+
+    "cache.file":       "~/.c-cache.json",
+
+    "fallback.user":    "CHANGEME",
+    "fallback.proto":   "ssh2"
+}

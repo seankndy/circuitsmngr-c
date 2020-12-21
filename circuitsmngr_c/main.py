@@ -35,7 +35,7 @@ def parse_arguments():
 
     return vars(args)
 
-def parse_config(filename):
+def load_config(filename):
     try:
         with open(filename) as fh:
             try:
@@ -48,21 +48,19 @@ def parse_config(filename):
 def load_cache(filename):
     with open(filename) as fh:
         try:
-            return json.load(fh)
+            cache = json.load(fh)
+            devices = cache['devices'] if 'devices' in cache else []
+            clients = cache['clients'] if 'clients' in cache else []
+            return devices, clients
         except:
             return []
 
-def fetch_devices(base_url, user, password):
-    response = requests.post(base_url+'?devices', json={'username':user, 'password':password}, headers={'Content-type': 'application/json', 'Accept': 'application/json'})
-
-    if response.status_code == requests.codes.unauthorized:
-        raise Exception('Invalid login.')
-
-    if response.ok:
-        return response.json()
-
-def fetch_clients(base_url, user, password):
-    response = requests.post(base_url+'?clients', json={'username':user, 'password':password}, headers={'Content-type': 'application/json', 'Accept': 'application/json'})
+def fetch_cm_data(base_url, user, password):
+    response = requests.post(
+        base_url,
+        json={'username':user, 'password':password},
+        headers={'Content-type': 'application/json', 'Accept': 'application/json'}
+    )
 
     if response.status_code == requests.codes.unauthorized:
         raise Exception('Invalid login.')
@@ -71,7 +69,7 @@ def fetch_clients(base_url, user, password):
         return response.json()
 
 def save_object_to_file_as_json(filename, obj):
-    with open(filename, 'w') as fh:
+    with open(filename, 'w+') as fh:
         json.dump(obj, fh, indent=2)
 
 def err(msg):
@@ -87,42 +85,43 @@ def main():
         'commands.telnet': '/usr/local/bin/telnet -K %hostname%',
         'commands.web': '/usr/bin/open http://%hostname%',
         'circuitsmngr.url': 'https://circuits.vcn.com/c.php',
-        'cache.clients': os.environ['HOME'] + '/.c-client-cache',
-        'cache.devices': os.environ['HOME'] + '/.c-device-cache',
+        'cache.file': os.environ['HOME'] + '/.c-cache.json',
         'fallback.user': '',
         'fallback.proto': 'telnet',
     };
     try:
-        config = {**default_config, **(parse_config(args['config']) if 'config' in args and args['config'] else {})}
-        for k in ['cache.devices', 'cache.clients']:
-            config[k] = os.path.expanduser(config[k])
+        config = {
+            **default_config,
+            **(load_config(args['config']) if 'config' in args and args['config'] else {})
+        }
+        config['cache.file'] = os.path.expanduser(config['cache.file'])
     except Exception as e:
         err(str(e))
 
-    if not args['update_cache'] and not (os.path.exists(config['cache.clients']) and os.path.exists(config['cache.devices'])):
+    if not args['update_cache'] and not os.path.exists(config['cache.file']):
         err('one or more cache files do not exist.  You probably need to run --update-cache -u <user> -p <pass>.')
 
     if args['update_cache']:
         try:
-            devices = fetch_devices(config['circuitsmngr.url'], args['user'], args['password'])
-            clients = fetch_clients(config['circuitsmngr.url'], args['user'], args['password'])
+            data = fetch_cm_data(config['circuitsmngr.url'], args['user'], args['password'])
+
+            if 'devices' not in data or 'clients' not in data:
+                raise Exception('Invalid data returned from circuitsmngr.')
 
             save_object_to_file_as_json(
-                config['cache.devices'],
-                devices
-            )
-            save_object_to_file_as_json(
-                config['cache.clients'],
-                clients
+                config['cache.file'],
+                data
             )
 
-            print('cache updated ({} devices, {} clients)'.format(len(devices), len(clients)))
+            print('cache updated ({} devices, {} clients)'.format(len(data['devices']), len(data['clients'])))
             exit()
         except Exception as e:
             err(str(e))
 
-    devices = load_cache(config['cache.devices'])
-    clients = load_cache(config['cache.clients'])
+    try:
+        devices, clients = load_cache(config['cache.file'])
+    except FileNotFoundError:
+        err('Cache file '+config['cache.file']+' does not exist, run --update-cache first.')
 
     client_id = None
     if args['client']:
@@ -135,7 +134,10 @@ def main():
 
     if args['bash_completion']:
         if args['bash_completion'] == 'client':
-            print(*[c['name'] for c in clients if c['name'][:len(args['query'])] == args['query']], sep='\n')
+            print(*[c['name'] for c
+                in clients
+                if c['name'][:len(args['query'])] == args['query']
+            ], sep='\n')
         elif args['bash_completion'] in ['service','network']:
             print(*[d['full_name'] for d in devices
                 if d['location_type'] == args['bash_completion']
@@ -146,7 +148,11 @@ def main():
         exit()
 
     try:
-        device = [d for d in devices if d['full_name'] == args['query'] and (not client_id or d['location_type'] == 'service')][0]
+        device = [d for d
+            in devices
+            if d['full_name'] == args['query']
+              and (not client_id or d['location_type'] == 'service')
+        ][0]
     except IndexError:
         err('device not found')
 

@@ -177,9 +177,9 @@ def main():
     if proto == 'ssh':
         proto = 'ssh1'
 
-    cmd = ''
-    if 'commands.'+device['proto'] in config:
-        cmd = config['commands.'+device['proto']]
+    if 'commands.'+proto not in config:
+        err('no command configured for protocol "{}" (add commands.{} to your config)'.format(proto, proto))
+    cmd = config['commands.'+proto]
 
     cmd = cmd.replace('%username%', user)
     cmd = cmd.replace('%hostname%', device['ip'])

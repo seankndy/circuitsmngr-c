@@ -3,8 +3,10 @@
 import argparse
 import json
 import os
+import sys
 from sys import exit
 import requests
+from . import completion
 
 def parse_arguments():
     """Parse command-line arguments, return dict."""
@@ -18,7 +20,11 @@ def parse_arguments():
 
     parser.add_argument('--config', default=os.environ['HOME']+'/.config/c.json', help='Specify configuration file, defaults to $HOME/.config/c.json')
     parser.add_argument('-c', '--client', help='Specify client/customer')
-    parser.add_argument('--bash-completion', choices=['client','service','network'], help='For use with bash completion to specify what to search.')
+    parser.add_argument('--complete', '--bash-completion', dest='complete', choices=['client','service','network'], help='Used by shell completion to specify what to search.')
+
+    completion_group = parser.add_argument_group(title='Shell completion')
+    completion_group.add_argument('--install-completion', nargs='?', const='auto', choices=['auto', *completion.SHELLS], metavar='{bash,zsh}', help='Install shell completion; auto-detects bash or zsh if not given, then exit')
+    completion_group.add_argument('--completion-script', choices=completion.SHELLS, help='Print the completion script for the given shell and exit')
 
     parser.add_argument('query', nargs='?', default='', help='Device query')
 
@@ -70,12 +76,24 @@ def save_object_to_file_as_json(filename, obj):
         json.dump(obj, fh, indent=2)
 
 def err(msg):
-    print('Error: ' + msg)
+    print('Error: ' + msg, file=sys.stderr)
     exit(1)
 
 
 def main():
     args = parse_arguments()
+
+    if args['completion_script']:
+        print(completion.SCRIPTS[args['completion_script']], end='')
+        exit()
+
+    if args['install_completion']:
+        try:
+            completion.install(None if args['install_completion'] == 'auto' else args['install_completion'])
+        except Exception as e:
+            err(str(e))
+        exit()
+
     default_config = {
         'commands.ssh1': '/usr/bin/ssh -1 -l %username% %hostname%',
         'commands.ssh2': '/usr/bin/ssh -l %username% %hostname%',
@@ -129,15 +147,15 @@ def main():
         else:
             err('Client not found in cache, maybe it needs updated?')
 
-    if args['bash_completion']:
-        if args['bash_completion'] == 'client':
+    if args['complete']:
+        if args['complete'] == 'client':
             print(*[c['name'] for c
                 in clients
                 if c['name'][:len(args['query'])] == args['query']
             ], sep='\n')
-        elif args['bash_completion'] in ['service','network']:
+        elif args['complete'] in ['service','network']:
             print(*[d['full_name'] for d in devices
-                if d['location_type'] == args['bash_completion']
+                if d['location_type'] == args['complete']
                     and (not client_id or client_id in d['clients'])
                     and d['full_name'][:len(args['query'])] == args['query']
             ], sep='\n')

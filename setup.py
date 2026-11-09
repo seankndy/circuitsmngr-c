@@ -15,7 +15,7 @@ with io.open(os.path.join(CURDIR, "README.md"), "r", encoding="utf-8") as f:
 
 setup(
     name='circuitsmngr-c',
-    version='1.1.0',    
+    version='1.2.0',    
     description='circuitsmngr device connect utility',
     url='https://github.com/seankndy/circuitsmngr-c',
     author='Sean Kennedy',
